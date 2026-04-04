@@ -1,3 +1,7 @@
+import psycopg2
+from config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
+
+
 def connect():
     try:
         conn = psycopg2.connect(
@@ -7,7 +11,6 @@ def connect():
             host=DB_HOST,
             port=DB_PORT
         )
-        conn.autocommit = True
         return conn
     except Exception as e:
         print("Error connecting to database:", e)

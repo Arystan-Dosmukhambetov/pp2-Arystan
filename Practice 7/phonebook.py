@@ -1,43 +1,42 @@
-import psycopg2
 import csv
+from connect import connect
 
 
-# 🔹 ПОДКЛЮЧЕНИЕ К БАЗЕ
-def connect():
-    return psycopg2.connect(
-        dbname="phonebook_db",   # имя БД
-        user="postgres",         # пользователь
-        password="20062008",         # ТВОЙ ПАРОЛЬ
-        host="localhost",
-        port="5432"
-    )
-
-
-# 🔹 СОЗДАНИЕ ТАБЛИЦЫ
+# CREATE TABLE
 def create_table():
     conn = connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS phonebook (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(100) NOT NULL,
-            phone VARCHAR(20) NOT NULL UNIQUE
-        );
-    """)
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS phonebook (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                phone VARCHAR(20) NOT NULL UNIQUE
+            );
+        """)
+        conn.commit()
+        print("Table created.")
+    except Exception as e:
+        conn.rollback()
+        print("Error:", e)
+    finally:
+        cur.close()
+        conn.close()
 
-    conn.commit()
-    cur.close()
-    conn.close()
-    print("Table created.")
 
-
-# 🔹 ВСТАВКА С КОНСОЛИ
+# INSERT FROM CONSOLE
 def insert_from_console():
     username = input("Enter username: ")
     phone = input("Enter phone: ")
 
     conn = connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
     try:
@@ -45,26 +44,28 @@ def insert_from_console():
             INSERT INTO phonebook (username, phone)
             VALUES (%s, %s)
         """, (username, phone))
-
         conn.commit()
         print("Inserted.")
     except Exception as e:
         conn.rollback()
         print("Error:", e)
+    finally:
+        cur.close()
+        conn.close()
 
-    cur.close()
-    conn.close()
 
-
-# 🔹 ВСТАВКА ИЗ CSV
+# INSERT FROM CSV
 def insert_from_csv(filename):
     conn = connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
     try:
         with open(filename, "r", encoding="utf-8") as file:
             reader = csv.reader(file)
-            next(reader)  # пропуск заголовка
+            next(reader)  # skip header
 
             for row in reader:
                 cur.execute("""
@@ -78,12 +79,12 @@ def insert_from_csv(filename):
     except Exception as e:
         conn.rollback()
         print("Error:", e)
+    finally:
+        cur.close()
+        conn.close()
 
-    cur.close()
-    conn.close()
 
-
-# 🔹 ОБНОВЛЕНИЕ
+# UPDATE CONTACT
 def update_contact():
     username = input("Enter username: ")
     print("1 - Change name")
@@ -91,6 +92,9 @@ def update_contact():
     choice = input("Choice: ")
 
     conn = connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
     try:
@@ -110,76 +114,112 @@ def update_contact():
                 WHERE username = %s
             """, (new_phone, username))
 
+        else:
+            print("Invalid choice.")
+            return
+
         conn.commit()
         print("Updated.")
     except Exception as e:
         conn.rollback()
         print("Error:", e)
+    finally:
+        cur.close()
+        conn.close()
 
-    cur.close()
-    conn.close()
 
-
-# 🔹 ВЫВОД ВСЕХ
+# SHOW ALL CONTACTS
 def show_all():
     conn = connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM phonebook")
-    rows = cur.fetchall()
+    try:
+        cur.execute("SELECT * FROM phonebook")
+        rows = cur.fetchall()
 
-    for row in rows:
-        print(row)
+        if not rows:
+            print("PhoneBook is empty.")
+        else:
+            for row in rows:
+                print(row)
+    except Exception as e:
+        print("Error:", e)
+    finally:
+        cur.close()
+        conn.close()
 
-    cur.close()
-    conn.close()
 
-
-# 🔹 ПОИСК ПО ИМЕНИ
+# SEARCH BY NAME
 def search_by_name():
     name = input("Enter name: ")
 
     conn = connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT * FROM phonebook
-        WHERE username ILIKE %s
-    """, ('%' + name + '%',))
+    try:
+        cur.execute("""
+            SELECT * FROM phonebook
+            WHERE username ILIKE %s
+        """, ('%' + name + '%',))
 
-    for row in cur.fetchall():
-        print(row)
+        rows = cur.fetchall()
+        if not rows:
+            print("No contacts found.")
+        else:
+            for row in rows:
+                print(row)
+    except Exception as e:
+        print("Error:", e)
+    finally:
+        cur.close()
+        conn.close()
 
-    cur.close()
-    conn.close()
 
-
-# 🔹 ПОИСК ПО ПРЕФИКСУ
+# SEARCH BY PHONE PREFIX
 def search_by_prefix():
     prefix = input("Enter prefix: ")
 
     conn = connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT * FROM phonebook
-        WHERE phone LIKE %s
-    """, (prefix + '%',))
+    try:
+        cur.execute("""
+            SELECT * FROM phonebook
+            WHERE phone LIKE %s
+        """, (prefix + '%',))
 
-    for row in cur.fetchall():
-        print(row)
+        rows = cur.fetchall()
+        if not rows:
+            print("No contacts found.")
+        else:
+            for row in rows:
+                print(row)
+    except Exception as e:
+        print("Error:", e)
+    finally:
+        cur.close()
+        conn.close()
 
-    cur.close()
-    conn.close()
 
-
-# 🔹 УДАЛЕНИЕ
+# DELETE CONTACT
 def delete_contact():
     print("1 - Delete by username")
     print("2 - Delete by phone")
     choice = input("Choice: ")
 
     conn = connect()
+    if conn is None:
+        return
+
     cur = conn.cursor()
 
     try:
@@ -189,18 +229,21 @@ def delete_contact():
         elif choice == "2":
             phone = input("Enter phone: ")
             cur.execute("DELETE FROM phonebook WHERE phone = %s", (phone,))
+        else:
+            print("Invalid choice.")
+            return
 
         conn.commit()
         print("Deleted.")
     except Exception as e:
         conn.rollback()
         print("Error:", e)
+    finally:
+        cur.close()
+        conn.close()
 
-    cur.close()
-    conn.close()
 
-
-# 🔹 МЕНЮ
+# MENU
 def menu():
     while True:
         print("\n--- MENU ---")
